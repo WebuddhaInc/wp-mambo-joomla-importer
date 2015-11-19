@@ -2,7 +2,7 @@
 
 /**
  * Plugin Name: Mambo / Joomla to Wordpress Importer
- * Plugin URI: http://www.joomunited.com/wordpress-products/wp-meta-seo
+ * Plugin URI: http://www.github.com/webuddhainc/wp-mambo-joomla-importer
  * Description: Migrate content from Mambo into Wordpress Posts, including Images, Categories, and Tags
  * Version: 2.0
  * Author: misterpah, webuddha

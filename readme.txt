@@ -1,4 +1,6 @@
 === Plugin Name ===
+Plugin Name: Mambo / Joomla to Wordpress Importer
+Plugin URI: http://www.github.com/webuddhainc/wp-mambo-joomla-importer
 Contributors: misterpah, webuddha
 Tags: mambo, joomla, import, migrate
 Requires at least: 3.0.0
