@@ -14,9 +14,18 @@
 
 */
 
+// Inspect
+  if( !function_exists('inspect') ){
+    function inspect(){
+      echo '<pre>' . print_r(func_get_args(), true) . '</pre>';
+    }
+  }
+
 // Runtime Params
-  $format     = (string)$_REQUEST['format'];
-  $catFilters = (array)$_REQUEST['catFilters'];
+  $format      = (string)$_REQUEST['format'];
+  $catFilters  = (array)$_REQUEST['catFilters'];
+  $idList      = (string)$_REQUEST['idList'];
+  $post_status = (string)$_REQUEST['post_status'];
 
 // Read Mambo Configuration
   include "configuration.php";
@@ -48,8 +57,12 @@
   $result = mysql_query($query) or die("<h3>Query failed</h3><pre>" . $query . "\n\n" . mysql_error() . "</pre>");
   while($row = mysql_fetch_assoc( $result )){ $categories[] = $row; }
 
+// ID List
+  $idList = array_filter(explode("\n", preg_replace('/[^0-9\n]/', '', $idList)), 'intval');
+
 // Process Request
-  if( !empty($catFilters) ){
+  $notFound = $idList;
+  if( !empty($idList) || !empty($catFilters) ){
 
     $payload = array(
       'site'       => $mosConfig_live_site,
@@ -68,6 +81,8 @@
         $category_ids[] = $match[1];
       }
     }
+    if( $idList )
+      $where[] = "content.id IN ('". implode("','", $idList) ."')";
     if( $category_ids )
       $where[] = "content.catid IN ('". implode("','", $category_ids) ."')";
     if( $section_ids )
@@ -105,7 +120,9 @@
     }
 
     $query = "
-      SELECT content.title AS post_title
+      SELECT
+        content.id AS original_id
+        , content.title AS post_title
         , content.title_alias AS post_name
         , CONCAT(content.introtext,content.fulltext) AS post_content
         , IF(content.state > 0,'publish','draft') AS post_status
@@ -130,6 +147,11 @@
     $query = str_replace('#__', $dbprefix, $query);
     $result = mysql_query($query) or die("<h3>Query failed</h3><pre>" . $query . "\n\n" . mysql_error() . "</pre>");
     while( $row = mysql_fetch_assoc( $result ) ){
+      if (array_search($row['original_id'], $notFound) !== false)
+        unset($notFound[array_search($row['original_id'], $notFound)]);
+      unset($row['original_id']);
+      if (!empty($post_status))
+        $row['post_status'] = $post_status;
       $row['category'] = array(
         'title' => $row['category_title'],
         'slug' => $row['category_name'],
@@ -159,6 +181,12 @@
             <option value="raw" <?= ($format == 'raw'?'selected':'') ?>>Raw</option>
           </select>
           <br>
+          <label>ID to Lookup (one per line)</label><br>
+          <textarea name="idList" style=width:100%;height:100px;><?php echo htmlspecialchars(implode($idList, "\n")) ?></textarea>
+          <br>
+          <label>Custom post_status</label><br>
+          <input name="post_status" type="text" value="<?php echo htmlspecialchars($post_status) ?>">
+          <br>
           <label>Category Filter(s)</label>
           <select name="catFilters[]" multiple size="50">
             <option>* All Categories</option>
@@ -177,6 +205,7 @@
         </form>
       </td>
       <td valign=top width="100%">
+        <?php if($notFound) echo "Not Found " . implode(', ',$notFound); ?>
         <textarea style="width: 100%; height: 100%;"><?php
           // http://stackoverflow.com/questions/2996049/how-to-compress-decompress-a-long-query-string-in-php
           // $compressed   = rtrim(strtr(base64_encode(gzdeflate(json_encode($payload), 9)), '+/', '-_'), '=');
@@ -185,7 +214,7 @@
             print_r( $payload );
           else if( $format == 'json' )
             echo json_encode($payload);
-          else
+          else if($payload)
             echo rtrim(strtr(base64_encode(gzdeflate(json_encode($payload), 9)), '+/', '-_'), '=');
         ?></textarea>
       </td>
